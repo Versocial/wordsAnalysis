@@ -69,7 +69,8 @@ public:
         TooLongSymbol = 5,
         UnkownState = 6,
         UnfinishedAnnotation=7,
-        UnfinishedToken=8
+        UnfinishedToken=8,
+        UnfinishedString=9,
     };
     
     Error() { errorNumber = 0; errorInfos = ""; }
@@ -82,8 +83,9 @@ public:
         case UndefinedIdentifier:break;
         case TooLongSymbol:break;
         case UnkownState:ans = "Error:: DFA state undefined : "+detail; break;
-        case UnfinishedAnnotation:ans = "Error:: UnfinishedAnnotation : " + detail; break;
-        case UnfinishedToken:ans = "UnfinishedToken : "+detail; break;
+        case UnfinishedAnnotation:ans = "Error:: Unfinished Annotation : " + detail; break;
+        case UnfinishedToken:ans = "Unfinished Token : "+detail; break;
+        case UnfinishedString:ans = "Unifinished String : " + detail; break;
         }
         errorInfos = errorInfos + ans + "\n";
         return ans+"\n";
@@ -112,6 +114,7 @@ public:
     string symbolCheck();
     string numberCheck();
     string identifierCheck();
+    string stringCheck();
     void  ignoreAnnotation();
     static ::unordered_map<string, string> symbolMap;
 
@@ -235,7 +238,7 @@ string compiler::numberCheck()
             else Exit = true;
             break;
         default://forChar = temp;
-            *output << error.errorInfo(Error::UnkownState,"numberCheck DFA unkown state  when manage\""+string(nowChar).substr(forChar-nowChar)+"\"");
+            *output << error.errorInfo(Error::UnkownState,"numberCheck DFA unkown state  when manage\""+string(nowChar,forChar-nowChar)+"\"");
             Exit = true;
             break;
         }
@@ -274,6 +277,37 @@ string compiler::identifierCheck()
     }
 
     return "@"+identifier;
+}
+
+string compiler::stringCheck()
+{
+    forChar = nowChar;
+    int state = 0;
+    bool Exit = false;
+    while (!Exit) {
+        switch (state)
+        {
+        case 0:
+            if ('\"' == *forChar)state = 1;
+            else { error.errorInfo(Error::UnfinishedString, string(nowChar, forChar - nowChar)); Exit = true; }
+            break;
+        case 1:
+            if ('\\' == *forChar)state = 2;
+            else if ('\"' == *forChar)Exit = true;
+            else;
+            break;
+        case 2:
+            state = 1;
+            break;
+        default:
+            break;
+        }
+      
+        if (Error::EndOfFile == incForChar()) { error.errorInfo(Error::UnfinishedString,string(nowChar,forChar-nowChar)); break; }
+    }
+
+    if (state == 1) return  string(nowChar, forChar - nowChar);
+    else return "";
 }
 
 void compiler::ignoreAnnotation()
@@ -339,7 +373,7 @@ void compiler::wordsAnalyze()
             ;
         }
         else if (*nowChar == '\"') {
-
+            info = stringCheck();
         }
         else if (*nowChar == '\'') {
 
