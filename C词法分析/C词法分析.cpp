@@ -2,6 +2,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <fstream>
+#include <string>
 using namespace::std;
 
 class node;
@@ -56,28 +57,40 @@ public:
 class Error 
 {
 private:
-
+    string errorInfos;
+    int errorNumber;
 public:
     enum Type {
         NoError = 0,
         EndOfFile = 1,
         UndefinedSymbol = 2,
         UndefinedNumber = 3,
-        UndefinedIdentif = 4,
+        UndefinedIdentifier = 4,
         TooLongSymbol = 5,
-        UnkownState = 6
+        UnkownState = 6,
+        UnfinishedAnnotation=7,
+        UnfinishedToken=8
     };
-   static string errorInfo(int type) {
-        string ans = "Error:: error unkown";
+    
+    Error() { errorNumber = 0; errorInfos = ""; }
+
+    string errorInfo(int type,string detail) {
+        string ans = "Error:: error unkown : ";
         switch (type) {
-        case UndefinedSymbol:ans = ""; break;
+        case UndefinedSymbol:ans = "Error:: Undefined symbol : "+detail; break;
         case UndefinedNumber:break;
-        case UndefinedIdentif:break;
+        case UndefinedIdentifier:break;
         case TooLongSymbol:break;
-        case UnkownState:ans = "Error:: DFA state undefined."; break;
+        case UnkownState:ans = "Error:: DFA state undefined : "+detail; break;
+        case UnfinishedAnnotation:ans = "Error:: UnfinishedAnnotation : " + detail; break;
+        case UnfinishedToken:ans = "UnfinishedToken : "+detail; break;
         }
-        return ans;
+        errorInfos = errorInfos + ans + "\n";
+        return ans+"\n";
     }
+
+    string getInfo() { return to_string( errorNumber)+" Error: \n"+ errorInfos; }
+
 };
 
 
@@ -91,12 +104,15 @@ ostream* output;
 char inputStr[LENGTH];
 char* nowChar, * forChar;
 bool bufferFlag;//true:12;false:21
+Error error;
 public:
     compiler(string path);
     ~compiler();
     void initSymbolCheckTree();
     string symbolCheck();
     string numberCheck();
+    string identifierCheck();
+    void  ignoreAnnotation();
     static ::unordered_map<string, string> symbolMap;
 
 
@@ -110,12 +126,14 @@ unordered_map<string, string> compiler::symbolMap = {
             {"+","plus"},{"++","inc"}, {"+=","plusAssign"},
             {"-","sub"},{"--","dec"},{"-=","decAssign"}, {"->","target"},
             {">","greaterThan"},{">=","greaterEql"},{">>","rightShift"},{">>=","rightShiftEql"},
-            {"=","assign"},{"==","equal"}
+            {"=","assign"},{"==","equal"},
+            {"/","devide"},{"/=","devideAssign"}
 };
 
 compiler::compiler(string path) {
+    error = Error();
     input = new  ifstream(path);
-    if (!input->is_open())cout << "Error:: Wrong Path\n";
+    if (!input->is_open())cout << "Error:: Wrong Path.\n";
     output = &cout;
 };
 
@@ -217,15 +235,16 @@ string compiler::numberCheck()
             else Exit = true;
             break;
         default://forChar = temp;
-            *output << Error::errorInfo(Error::UnkownState);
+            *output << error.errorInfo(Error::UnkownState,"numberCheck DFA unkown state  when manage\""+string(nowChar).substr(forChar-nowChar)+"\"");
             Exit = true;
             break;
         }
+
         if (!Exit) {
             number += *forChar;
             temp = forChar;
             if (Error::EndOfFile == incForChar()) {
-                forChar = temp; Exit = true;
+                forChar = temp; Exit = true; 
             }
         }
         else forChar = temp;
@@ -239,6 +258,61 @@ string compiler::numberCheck()
     return number;
 }
 
+string compiler::identifierCheck()
+{
+    forChar = nowChar;
+    int state = 0;
+    string identifier = "";
+    char* temp = forChar;
+    while (1) {
+        if (isalpha(*forChar) || *forChar == '_' || (isdigit(*forChar) && identifier.size())) {
+            identifier += *forChar;
+            temp = forChar;
+            if (Error::EndOfFile == incForChar()) { forChar = temp; break; }
+        }
+        else { forChar = temp; break; }
+    }
+
+    return "@"+identifier;
+}
+
+void compiler::ignoreAnnotation()
+{
+    forChar = nowChar;
+    int state = 1;
+    bool Exit = false;
+    char* temp = forChar;
+    while (!Exit) {
+        switch(state) {        
+        case 1:
+            if (*forChar == '/')state = 2;
+            else if (*forChar == '*')state = 4;
+            else return;
+        case 2:
+            if (*forChar == '\n')Exit = true;
+            break;
+        case 4:
+            if (*forChar == '*')state = 5;
+            break;
+        case 5:
+            if (*forChar == '/')Exit = true;
+            else if (*forChar == '*');
+            else state = 4;
+            break;
+        }
+        if (!Exit) {
+            temp = forChar;
+            if (Error::EndOfFile == incForChar()){
+                forChar = temp; Exit = true;
+            }
+        }
+        else if(state!=2&&state!=5) forChar = temp; 
+    }
+    if (state != 2 && state != 5) { error.errorInfo(Error::UnfinishedAnnotation, ""); }
+    return;
+}
+
+
 void compiler::wordsAnalyze()
 {
 
@@ -247,30 +321,36 @@ void compiler::wordsAnalyze()
     nowChar = forChar = inputStr;
     bufferFlag = false;
     string info ;
+    
     while (*nowChar) {
         info = "";
         if (isdigit(*nowChar)) {
             info=  numberCheck();
         }
         else if (isalpha(*nowChar) || *nowChar == '_') {
-
+            info = identifierCheck();
+        }
+        else if (*nowChar == '/') {
+            if (Error::EndOfFile == incForChar()) { error.errorInfo(Error::UnfinishedToken, "/"); break; }
+            else if (*forChar == '*' || *forChar == '/') { nowChar=forChar; ignoreAnnotation(); }
+            else { forChar = nowChar; info = symbolCheck(); }
         }
         else if (isspace(*nowChar)) {
             ;
         }
+        else if (*nowChar == '\"') {
+
+        }
+        else if (*nowChar == '\'') {
+
+        }
         else if (symbolCheckTree.count(*nowChar)) {
             info = symbolCheck();
-        }
-        else if (*nowChar == '\"'){
-
-        }
-        else if (*nowChar == '\''){
-
         }
         else {
 
         };
-       if(info.size()) *output << info<<" ";
+        if(info.size()) *output << info<<" ";
         if (Error::EndOfFile == incForChar())break;
         nowChar = forChar;
     }
