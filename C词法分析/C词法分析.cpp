@@ -54,11 +54,15 @@ public:
     }
 };
 
+
 class Error 
 {
 private:
+    long long  charNumber;
+    int lineNumber;
     string errorInfos;
     int errorNumber;
+    compiler* parent;
 public:
     enum Type {
         NoError = 0,
@@ -74,7 +78,13 @@ public:
         UnfinishedChar=10
     };
     
-    Error() { errorNumber = 0; errorInfos = ""; }
+    Error() {
+        lineNumber = 1;
+        charNumber = 0; 
+        errorNumber = 0;
+        errorInfos = ""; 
+        this->parent = parent;
+    }
 
     string errorInfo(int type,string detail) {
         string ans = "Error:: error unkown : ";
@@ -91,26 +101,39 @@ public:
         case NoError:break;
         default:ans = "Error:: Unkown Error : " + detail; break;
         }
-        errorInfos = errorInfos + ans + "\n";
+        errorInfos ="Line "+to_string(lineNumber)+" >> "+ errorInfos + ans + "\n";
+        errorNumber += (Error::NoError != type);
         return ans+"\n";
     }
 
     string getInfo() { return to_string( errorNumber)+" Error: \n"+ errorInfos; }
 
+    int lineNum() { return lineNumber; }
+    long long charNum() { return charNumber; }
+    void incLineNum() { lineNumber++; }
+    void incCharNum(int num) { charNumber+=num; }
+    int errorNum() { return errorNumber; }
 };
 
 
 class compiler
 {
 private:
-unordered_map<char, node*> symbolCheckTree = {};
-ifstream* input;
-ostream* output;
+    unordered_map<char, node*> symbolCheckTree = {};
+    ifstream* input;
+    ostream* output;
 #define LENGTH 2048
-char inputStr[LENGTH];
-char* nowChar, * forChar;
-bool bufferFlag;//true:12;false:21
-Error error;
+    char inputStr[LENGTH];
+    char* nowChar, * forChar;
+    bool bufferFlag;//true:12;false:21
+    Error error;
+
+    int noticedChar;
+    int noticedString;
+    int noticedIdentifier;
+    int noticedSymbol;
+    int noticedNumber;
+
 public:
     compiler(string path);
     ~compiler();
@@ -122,13 +145,16 @@ public:
     string charCheck();
     void  ignoreAnnotation();
     static ::unordered_map<string, string> symbolMap;
-
-
+    int lineNum() { return error.lineNum(); }
+    long long charNum() { return error.charNum(); }
+    void incLineNum() { error.incLineNum(); }
+    void incCharNum(int num) { error.incCharNum(num); }
     void wordsAnalyze();
     int incForChar();
-
+    string compileInfos();
 
 };
+
 
 unordered_map<string, string> compiler::symbolMap = {
             {"+","plus"},{"++","inc"}, {"+=","plusAssign"},
@@ -150,6 +176,11 @@ unordered_map<string, string> compiler::symbolMap = {
 
 compiler::compiler(string path) {
     error = Error();
+    noticedChar=0;
+    noticedString=0;
+    noticedIdentifier=0;
+    noticedSymbol=0;
+    noticedNumber = 0;
     input = new  ifstream(path);
     if (!input->is_open())cout << "Error:: Wrong Path.\n";
     output = &cout;
@@ -163,6 +194,15 @@ compiler::~compiler()
     input->close();
     // output->close();
 };
+
+string compiler::compileInfos()
+{
+    return "\n\n\t\t\t\t<<<<<======== [ Information ] ========>>>>>\t\t\t\t\n\t\t\t\t     " +
+        to_string(lineNum()) + " lines | " + to_string(charNum()) + " characters | " + to_string(error.errorNum()) + " errors.\n\t\t\t" +
+        "Noticed : "+to_string(noticedIdentifier)+" identifiers | " + to_string(noticedSymbol)+" symbols | " + to_string(noticedChar)+" chars | " + to_string(noticedString) +" strings | " + to_string(noticedNumber)+" numbers \n" +
+         error.getInfo();
+        ;
+}
 
 void compiler::initSymbolCheckTree() {
     for (unordered_map<string, string>::iterator it = symbolMap.begin(); it != symbolMap.end(); it++) {
@@ -199,6 +239,7 @@ string compiler::symbolCheck()
         if (now == NULL) { forChar = temp; break; }
         symbol += *forChar;
     }
+    noticedSymbol++;
     return symbolMap[symbol];
 }
 
@@ -269,8 +310,8 @@ string compiler::numberCheck()
     }
 
     switch (state) {
-    case 0:case 12:case 4:number = "$I" + number; break;
-    case 1:case 2:case 3:number = "$F" + number; break;
+    case 0:case 12:case 4:number = "$I" + number; noticedNumber++; break;
+    case 1:case 2:case 3:number = "$F" + number; noticedNumber++; break;
     default:number = "$?" + number; break;
     }
     return number;
@@ -290,7 +331,7 @@ string compiler::identifierCheck()
         }
         else { forChar = temp; break; }
     }
-
+    noticedIdentifier++;
     return "@"+identifier;
 }
 
@@ -319,7 +360,7 @@ string compiler::stringCheck()
         }
         if (!Exit&&Error::EndOfFile == incForChar()) { error.errorInfo(Error::UnfinishedString,string(nowChar,forChar-nowChar)); break; }
     }
-    if (state == 1) return  string(nowChar, forChar - nowChar+1);
+    if (state == 1) { noticedString++; return  string(nowChar, forChar - nowChar + 1); }
     else return "";
 }
 
@@ -360,14 +401,16 @@ string compiler::charCheck() {
         if (!Exit) {
             ch += *forChar;
             temp = forChar;
-            if (Error::EndOfFile == incForChar()) { forChar = temp; Exit = true; }
+            if (Error::EndOfFile == incForChar()) { error.errorInfo(Error::UnfinishedChar, ch); forChar = temp; Exit = true; }
         }
         else {
             if (state != 4 && state != 3) { forChar = temp;  error.errorInfo(Error::UnfinishedChar, ch); }
             else ch += *forChar;
         }
     }
-    if (state == 4 || state == 3)    return ch;
+    if (state == 4 || state == 3) {
+        noticedChar++;    return ch;
+    }
     else return "";
 }
 
@@ -388,6 +431,7 @@ void compiler::ignoreAnnotation()
             break;
         case 4:
             if (*forChar == '*')state = 5;
+            else if (*forChar == '\n')incLineNum();
             break;
         case 5:
             if (*forChar == '/')Exit = true;
@@ -431,7 +475,7 @@ void compiler::wordsAnalyze()
             else { forChar = nowChar; info = symbolCheck(); }
         }
         else if (isspace(*nowChar)) {
-            ;
+            if (*nowChar == '\n') { info += '\n'; incLineNum(); }
         }
         else if (*nowChar == '\"') {
             info = stringCheck();
@@ -445,8 +489,10 @@ void compiler::wordsAnalyze()
         else {
 
         };
-        if(info.size()) *output << info<<" ";
-        if (Error::EndOfFile == incForChar())break;
+        if(!info.empty()) *output << info<<" ";
+        if (Error::EndOfFile == incForChar()) {
+            break;
+        }
         nowChar = forChar;
     }
     return;
@@ -455,22 +501,27 @@ void compiler::wordsAnalyze()
 
 int compiler::incForChar()
 {
+    forChar = &inputStr[(forChar - inputStr + 1) % LENGTH];
     if (*forChar == EOF) {
         if (&inputStr[LENGTH / 2 - 1] == forChar&&bufferFlag==false) {
             if (nowChar > &inputStr[LENGTH / 2 - 1]) { return Error::TooLongSymbol; }
             input->read(&inputStr[LENGTH / 2], LENGTH / 2 - 1);
             forChar = &inputStr[LENGTH / 2];
+            bufferFlag = true;
         }
         else if (&inputStr[LENGTH - 1] == forChar&&bufferFlag==true) {
             if (nowChar < &inputStr[LENGTH / 2 - 1]) { return Error::TooLongSymbol; }
             input->read(&inputStr[0], LENGTH / 2 - 1);
             forChar = &inputStr[0];
-        }
-        else {
-            return Error::EndOfFile;//FILE END SO NEVER INC ANYMORE AND THIS FUNCTION WILL ALWAYS RETURN Erorr::EndOfFile
+            incCharNum( LENGTH-2);
+            bufferFlag = false;
         }
     }
-    else forChar++;
+    else if(*forChar=='\0') {
+        incCharNum((forChar - inputStr >= LENGTH / 2) ? forChar - inputStr - 1 : forChar - inputStr - 0);
+        return Error::EndOfFile;//FILE END SO NEVER INC ANYMORE AND THIS FUNCTION WILL ALWAYS RETURN Erorr::EndOfFile
+    }
+
     return Error::NoError;
 }
 
@@ -480,6 +531,7 @@ int main()
     compiler Compiler = compiler("test.txt");
     Compiler.initSymbolCheckTree();
     Compiler.wordsAnalyze();
+    std::cout<<Compiler.compileInfos();
     std::cout << "Hello World!\n";
     system("pause");
 }
