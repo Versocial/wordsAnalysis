@@ -71,6 +71,7 @@ public:
         UnfinishedAnnotation=7,
         UnfinishedToken=8,
         UnfinishedString=9,
+        UnfinishedChar=10
     };
     
     Error() { errorNumber = 0; errorInfos = ""; }
@@ -79,13 +80,16 @@ public:
         string ans = "Error:: error unkown : ";
         switch (type) {
         case UndefinedSymbol:ans = "Error:: Undefined symbol : "+detail; break;
-        case UndefinedNumber:break;
-        case UndefinedIdentifier:break;
-        case TooLongSymbol:break;
+        case UndefinedNumber:ans = "Error:: UndefinedNumber :  "+detail; break;
+        case UndefinedIdentifier:ans="Error:: UndefinedIdentifier : "+detail; break;
+        case TooLongSymbol:ans = "Error:: TooLongSymbol : " + detail; break;
         case UnkownState:ans = "Error:: DFA state undefined : "+detail; break;
         case UnfinishedAnnotation:ans = "Error:: Unfinished Annotation : " + detail; break;
-        case UnfinishedToken:ans = "Unfinished Token : "+detail; break;
-        case UnfinishedString:ans = "Unifinished String : " + detail; break;
+        case UnfinishedToken:ans = "Error:: Unfinished Token : "+detail; break;
+        case UnfinishedString:ans = "Error:: Unifinished String : " + detail; break;
+        case UnfinishedChar:ans = "Error:: UnfinishedChar : " + detail; break;
+        case NoError:break;
+        default:ans = "Error:: Unkown Error : " + detail; break;
         }
         errorInfos = errorInfos + ans + "\n";
         return ans+"\n";
@@ -115,6 +119,7 @@ public:
     string numberCheck();
     string identifierCheck();
     string stringCheck();
+    string charCheck();
     void  ignoreAnnotation();
     static ::unordered_map<string, string> symbolMap;
 
@@ -128,9 +133,19 @@ public:
 unordered_map<string, string> compiler::symbolMap = {
             {"+","plus"},{"++","inc"}, {"+=","plusAssign"},
             {"-","sub"},{"--","dec"},{"-=","decAssign"}, {"->","target"},
+            {"*","multiply"},{"*=","multiplyAssign" },
+            {"/","devide"},{"/=","devideAssign"},
+            {"%","reminder"}, {"%=","reminderAssign"},
+            {"<","lessThan"},{"<=","lessEql"},{"<<=","leftShift"},{"<<=","leftShiftEql"},
             {">","greaterThan"},{">=","greaterEql"},{">>","rightShift"},{">>=","rightShiftEql"},
             {"=","assign"},{"==","equal"},
-            {"/","devide"},{"/=","devideAssign"}
+            {"!","not"},{"!=","notEql" },
+            {"~","bitNot"},{"~=","bitNotAssign" },
+            {"^","bitXor"},{"^=","bitXorAssign"},
+            {"&","bitAnd"},{"&=","bitAndAssign"},{"&&","and"},
+            {"|","bitOr"},{"|=","bitOrAssign"},{"||","or"},
+            {"(","("},{")",")"},{"[","["},{"]","]"},{"{","{"},{"}","}"},
+            {".","point"},{"?","question"},{":","colon"},{";","semicolon"},{",","comma"}
 };
 
 compiler::compiler(string path) {
@@ -234,7 +249,7 @@ string compiler::numberCheck()
             Exit = true;
             break;
         case 4:
-            if (isdigit(*forChar));
+            if (isxdigit(*forChar));
             else Exit = true;
             break;
         default://forChar = temp;
@@ -302,11 +317,57 @@ string compiler::stringCheck()
         default:
             break;
         }
-      
-        if (Error::EndOfFile == incForChar()) { error.errorInfo(Error::UnfinishedString,string(nowChar,forChar-nowChar)); break; }
+        if (!Exit&&Error::EndOfFile == incForChar()) { error.errorInfo(Error::UnfinishedString,string(nowChar,forChar-nowChar)); break; }
     }
+    if (state == 1) return  string(nowChar, forChar - nowChar+1);
+    else return "";
+}
 
-    if (state == 1) return  string(nowChar, forChar - nowChar);
+string compiler::charCheck() {
+    forChar = nowChar;
+    int state = 0;
+    string ch= "";
+    char* temp = forChar;
+    bool Exit = false;
+    while (!Exit) {
+        switch (state) {
+        case -1:break; 
+        case 0:
+            if (*forChar == '\'')state = 1;
+            else { state = -1; Exit = true; }
+            break;
+        case 1:
+            if (*forChar == '\\')state = 2;
+            else if (isprint(*forChar)&&*forChar!='\n')state = 4; 
+            else { state = -1; Exit = true; }
+            break;
+        case 2:
+            if (isalpha(*forChar)||*forChar=='\''||*forChar=='\"'||*forChar=='\\')state = 3;
+            else { state = -1; Exit = true; }
+            break;
+        case 3:
+            if (*forChar == '\'');
+            else state = -1;
+            Exit = true;
+            break;
+        case 4:
+            if (*forChar == '\'');
+            else state = -1;
+            Exit = true;
+            break;
+        default:Exit = true; break;
+        }
+        if (!Exit) {
+            ch += *forChar;
+            temp = forChar;
+            if (Error::EndOfFile == incForChar()) { forChar = temp; Exit = true; }
+        }
+        else {
+            if (state != 4 && state != 3) { forChar = temp;  error.errorInfo(Error::UnfinishedChar, ch); }
+            else ch += *forChar;
+        }
+    }
+    if (state == 4 || state == 3)    return ch;
     else return "";
 }
 
@@ -376,7 +437,7 @@ void compiler::wordsAnalyze()
             info = stringCheck();
         }
         else if (*nowChar == '\'') {
-
+            info = charCheck();
         }
         else if (symbolCheckTree.count(*nowChar)) {
             info = symbolCheck();
