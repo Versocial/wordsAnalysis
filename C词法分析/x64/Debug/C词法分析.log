@@ -1,3 +1,6 @@
-﻿  C词法分析.cpp
-A:\Programer\音乐\Albert_C\VS-Cpp\C词法分析\C词法分析\C词法分析.cpp(521,40): warning C4244: “参数”: 从“__int64”转换到“int”，可能丢失数据
+﻿  compiler_baseTools.cpp
+A:\Programer\音乐\Albert_C\VS-Cpp\C词法分析\C词法分析\compiler_baseTools.cpp(80,43): warning C4244: “参数”: 从“__int64”转换到“int”，可能丢失数据
+  compiler_wordsAnalyze.cpp
+  main.cpp
+  正在生成代码...
   C词法分析.vcxproj -> A:\Programer\音乐\Albert_C\VS-Cpp\C词法分析\x64\Debug\C词法分析.exe

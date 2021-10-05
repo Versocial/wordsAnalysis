@@ -1,0 +1,60 @@
+#pragma once
+#include<string>
+using namespace::std;
+class Error
+{
+private:
+
+    string errorInfos;
+    int errorNumber;
+
+public:
+
+    Error() {
+        errorNumber = 0;
+        errorInfos = string("");
+    }
+
+    enum Type {
+        NoError = 0,
+        EndOfFile = 1,
+        UndefinedSymbol = 2,
+        UndefinedNumber = 3,
+        UndefinedIdentifier = 4,
+        TooLongSymbol = 5,
+        UnkownState = 6,
+        UnfinishedAnnotation = 7,
+        UnfinishedToken = 8,
+        UnfinishedString = 9,
+        UnfinishedChar = 10,
+        UnkownInput = 11,
+        UnsupportedChar=12
+    };
+
+    string addInfo(int lineNumber, int rowNumber, int type, string detail) {
+        string ans = "Error:: error unkown : ";
+        switch (type) {
+        case UndefinedSymbol:ans = "Error:: Undefined symbol : " + detail; break;
+        case UndefinedNumber:ans = "Error:: UndefinedNumber :  " + detail; break;
+        case UndefinedIdentifier:ans = "Error:: UndefinedIdentifier : " + detail; break;
+        case TooLongSymbol:ans = "Error:: TooLongSymbol : " + detail; break;
+        case UnkownState:ans = "Error:: DFA state undefined : " + detail; break;
+        case UnfinishedAnnotation:ans = "Error:: Unfinished Annotation : " + detail; break;
+        case UnfinishedToken:ans = "Error:: Unfinished Token : " + detail; break;
+        case UnfinishedString:ans = "Error:: Unifinished String : " + detail; break;
+        case UnfinishedChar:ans = "Error:: UnfinishedChar : " + detail; break;
+        case UnkownInput:ans = "Error:: Unkown Input code : " + detail; break;
+        case UnsupportedChar:ans = "Error:: UnSupported char : " + detail; break;
+        case NoError:return ""; break;
+        default:ans = "Error:: Unkown Error : " + detail; break;
+        }
+        errorInfos = errorInfos + "Position ( " + to_string(lineNumber) + " , " + to_string(rowNumber) + " ) >> " + ans + "\n";
+        errorNumber++;
+        return ans + "\n";
+    }
+
+
+    string getInfo() { return to_string(errorNumber) + " Error: \n" + errorInfos; }
+
+    int errorNum() { return errorNumber; }
+};
