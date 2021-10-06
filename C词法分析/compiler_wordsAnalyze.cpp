@@ -13,18 +13,18 @@ set<string> compiler::keyWord = {
 unordered_map<string, string> compiler::symbolMap = {
             {"+","plus"},{"++","inc"}, {"+=","plusAssign"},
             {"-","sub"},{"--","dec"},{"-=","decAssign"}, {"->","target"},
-            {"*","multiply"},{"*=","multiplyAssign" },
+            {"*","star"},{"*=","multiplyAssign" },
             {"/","devide"},{"/=","devideAssign"},
             {"%","reminder"}, {"%=","reminderAssign"},
-            {"<","lessThan"},{"<=","lessEql"},{"<<=","leftShift"},{"<<=","leftShiftEql"},
-            {">","greaterThan"},{">=","greaterEql"},{">>","rightShift"},{">>=","rightShiftEql"},
+            {"<","lessThan"},{"<=","lessEql"},{"<<","leftShift"},{"<<=","leftShiftAssign"},
+            {">","greaterThan"},{">=","greaterEql"},{">>","rightShift"},{">>=","rightShiftAssign"},
             {"=","assign"},{"==","equal"},
             {"!","not"},{"!=","notEql" },
             {"~","bitNot"},{"~=","bitNotAssign" },
             {"^","bitXor"},{"^=","bitXorAssign"},
             {"&","bitAnd"},{"&=","bitAndAssign"},{"&&","and"},
             {"|","bitOr"},{"|=","bitOrAssign"},{"||","or"},
-            {"(","("},{")",")"},{"[","["},{"]","]"},{"{","{"},{"}","}"},
+            {"(","-"},{")","-"},{"[","-"},{"]","-"},{"{","-"},{"}","-"},
             {".","point"},{"?","question"},{":","colon"},{";","semicolon"},{",","comma"}
 };
 
@@ -75,7 +75,7 @@ void compiler::wordsAnalyze()
             errorInfoAppend(Error::UnkownInput,"\""+ string(nowChar, forChar-nowChar) + "\"" );
 
         };
-        if (!info.empty()) *output << info << " ";
+        if (!info.empty()) *output << info << "\t";
         if (Error::EndOfFile == incForChar()) {
             break;
         }
@@ -115,13 +115,13 @@ string compiler::symbolCheck()
     string symbol = ""; symbol += *nowChar;
     while (now->hasSon()) {
         char* temp = forChar;
-        if (Error::EndOfFile == incForChar())return "";
+        if (Error::EndOfFile == incForChar())return "<?symbol,"+symbol+">";
         now = now->seekSon(*forChar);
         if (now == NULL) { forChar = temp; break; }
         symbol += *forChar;
     }
     noticedSymbol++;
-    return symbolMap[symbol];
+    return  "<" + symbol + ",->";//"<"+symbol+","+symbolMap[symbol]+">";
 }
 
 string compiler::numberCheck()
@@ -192,9 +192,9 @@ string compiler::numberCheck()
     }
 
     switch (state) {
-    case 0:case 12:case 4:number = "$I" + number; noticedNumber++; break;
-    case 1:case 2:case 3:number = "$F" + number; noticedNumber++; break;
-    default:number = "$?" + number; break;
+    case 0:case 12:case 4:number = "<integer," + number+">"; noticedNumber++; break;
+    case 1:case 2:case 3:number = "<realNumber," + number+">"; noticedNumber++; break;
+    default:number = "<?number," + number+">"; break;
     }
     return number;
 }
@@ -216,11 +216,11 @@ string compiler::identifierCheck()
     
     if (keyWord.count(identifier)) {
         noticedKeyWord++;
-        return  identifier;
+        return "<"+ identifier+",->";
     }
     else {
         noticedIdentifier++;
-        return "@" + identifier;
+        return "<identifier," + identifier+">";
     }
 }
 
@@ -267,8 +267,8 @@ string compiler::stringCheck()
         }               
         if (!Exit && Error::EndOfFile == incForChar()) { errorInfoAppend(Error::UnfinishedString,ans); break; }
     }
-    if (state == 1) { noticedString++; return  ans; }
-    else return "\"**unkown string**\"";
+    if (state == 1) { noticedString++; return "<string,"+ ans+">"; }
+    else return "<?string,\"**unkown string**\">";
 }
 
 string compiler::charCheck() {
@@ -333,9 +333,9 @@ string compiler::charCheck() {
         }
     }
     if (state == 4 || state == 3) {
-        noticedChar++;    return string(nowChar,forChar-nowChar+1);
+        noticedChar++;    return "<char," + string(nowChar,forChar-nowChar+1) + ">";
     }
-    else return "";
+    else return "<?char,"+ string(nowChar, forChar - nowChar + 1) +">";
 }
 
 void compiler::ignoreAnnotation()
@@ -384,5 +384,5 @@ string compiler::pretreatCheck()
     };
     string info=string(nowChar,forChar-nowChar);
     nowChar = forChar=temp;
-    return info;
+    return "<#pretreat,"+info+">";
 }
