@@ -1,30 +1,33 @@
 #include "compiler.h"
+using namespace::std;
 
-compiler::compiler(string path,ostream& out) {
+compiler::compiler(string path, ostream& out) {
     error = Error();
-    noticedChar=0;
-    noticedString=0;
-    noticedIdentifier=0;
-    noticedSymbol=0;
+    noticedChar = 0;
+    noticedString = 0;
+    noticedIdentifier = 0;
+    noticedSymbol = 0;
     noticedNumber = 0;
     noticedKeyWord = 0;
     lineNumber = 1;
     charNumber = 0;
     lineStartNumber = 0;
-    input = new  ifstream(path);
-    openFile = input->is_open();
+    initSymbolCheckTree();
+    ifstream* inputs = new  ifstream(path);
+    openFile = inputs->is_open();
+    if (openFile)input = inputs;
     output = &out;
-};
+}
 
 compiler::~compiler()
 {
     for (unordered_map<char, node*>::iterator it = symbolCheckTree.begin(); it != symbolCheckTree.end(); it++) {
         delete it->second;
     };
-    input->close();
+    if(openFile)((ifstream*)input)->close();
 }
 
-bool compiler::isFileOpen()
+bool compiler::fileOpened()
 {
     return openFile;
 }
@@ -41,7 +44,6 @@ string compiler::compileInfos()
 
 int compiler::incForChar()
 {
-    if (*forChar == '\0')return Error::EndOfFile;
     forChar = &inputStr[(forChar - inputStr + 1) % LENGTH];
     if (*forChar == EOF) {
         if (&inputStr[LENGTH / 2 - 1] == forChar) {

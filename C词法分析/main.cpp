@@ -4,12 +4,11 @@ int main()
 {
     string path;
     cin >> path;
-    compiler wordsAnalyzer = compiler(path,cout);
-    if (!wordsAnalyzer.isFileOpen()) {
+   compiler wordsAnalyzer(path,cout); 
+   if(!wordsAnalyzer.fileOpened()){
         cout << "Can Not Open File \"" << path << "\" .\n";
         return 1;
     }
-    wordsAnalyzer.initSymbolCheckTree();
     wordsAnalyzer.wordsAnalyze();
     cout << wordsAnalyzer.compileInfos();
     cout << ">>>>>>  Words Analyze Complete !\n";

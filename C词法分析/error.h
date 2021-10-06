@@ -1,18 +1,17 @@
 #pragma once
 #include<string>
-using namespace::std;
 class Error
 {
 private:
 
-    string errorInfos;
+    std::string errorInfos;
     int errorNumber;
 
 public:
 
     Error() {
         errorNumber = 0;
-        errorInfos = string("");
+        errorInfos = std::string("");
     }
 
     enum Type {
@@ -31,8 +30,8 @@ public:
         UnsupportedChar=12
     };
 
-    string addInfo(int lineNumber, int rowNumber, int type, string detail) {
-        string ans = "Error:: error unkown : ";
+    std::string addInfo(int lineNumber, int rowNumber, int type, std::string detail) {
+        std::string ans = "Error:: error unkown : ";
         switch (type) {
         case UndefinedSymbol:ans = "Error:: Undefined symbol : " + detail; break;
         case UndefinedNumber:ans = "Error:: UndefinedNumber :  " + detail; break;
@@ -48,13 +47,13 @@ public:
         case NoError:return ""; break;
         default:ans = "Error:: Unkown Error : " + detail; break;
         }
-        errorInfos = errorInfos + "Position ( " + to_string(lineNumber) + " , " + to_string(rowNumber) + " ) >> " + ans + "\n";
+        errorInfos = errorInfos + "Position ( " + std::to_string(lineNumber) + " , " + std::to_string(rowNumber) + " ) >> " + ans + "\n";
         errorNumber++;
         return ans + "\n";
     }
 
 
-    string getInfo() { return to_string(errorNumber) + " Error: \n" + errorInfos; }
+    std::string getInfo() { return std::to_string(errorNumber) + " Error: \n" + errorInfos; }
 
     int errorNum() { return errorNumber; }
 };

@@ -6,7 +6,6 @@
 #include <set>
 #include "error.h"
 #include "node.h"
-using namespace::std;
 
 class compiler
 {
@@ -16,12 +15,12 @@ private:
     long long  charNumber;
     long long lineStartNumber;
 
-    static set<string>keyWord;
-    static unordered_map<string, string> symbolMap;
-    unordered_map<char, node*> symbolCheckTree = {};
+    static std::set<std::string>keyWord;
+    static std::unordered_map<std::string, std::string> symbolMap;
+    std::unordered_map<char, node*> symbolCheckTree = {};
 
-    ifstream* input;
-    ostream* output;
+    std::istream* input;
+    std::ostream* output;
     char inputStr[LENGTH];
     char* nowChar, * forChar;
     bool bufferFlag;//true:12;false:21
@@ -35,25 +34,24 @@ private:
     int noticedNumber;
     int noticedKeyWord;
 
-    string symbolCheck();
-    string numberCheck();
-    string identifierCheck();
-    string stringCheck();
-    string charCheck();
-    string pretreatCheck();
+    void initSymbolCheckTree();
+    std::string symbolCheck();
+    std::string numberCheck();
+    std::string identifierCheck();
+    std::string stringCheck();
+    std::string charCheck();
+    std::string pretreatCheck();
     void  ignoreAnnotation();
 
     inline long long nowCharNum();
     int incForChar();
 
 public:
-
-    compiler(string path,ostream& out);
+    compiler(std::string path, std::ostream& out);
     ~compiler();
-    bool isFileOpen();
-    void initSymbolCheckTree();
+    bool fileOpened();
     void wordsAnalyze();
-    void errorInfoAppend(int type, string detail);
-    string compileInfos();
+    void errorInfoAppend(int type, std::string detail);
+    std::string compileInfos();
 
 };

@@ -1,5 +1,5 @@
 #include "compiler.h"
-
+using namespace::std;
 
 set<string> compiler::keyWord = {
     "int", "long", "short", "float", "double", "char", 
@@ -7,6 +7,25 @@ set<string> compiler::keyWord = {
     "if", "else", "goto", "switch", "case", "do", "while", "for", "continue", "break", "return", "default", "typedef",
     "auto", "register", "extern", "static",
     "sizeof"
+};
+
+
+unordered_map<string, string> compiler::symbolMap = {
+            {"+","plus"},{"++","inc"}, {"+=","plusAssign"},
+            {"-","sub"},{"--","dec"},{"-=","decAssign"}, {"->","target"},
+            {"*","multiply"},{"*=","multiplyAssign" },
+            {"/","devide"},{"/=","devideAssign"},
+            {"%","reminder"}, {"%=","reminderAssign"},
+            {"<","lessThan"},{"<=","lessEql"},{"<<=","leftShift"},{"<<=","leftShiftEql"},
+            {">","greaterThan"},{">=","greaterEql"},{">>","rightShift"},{">>=","rightShiftEql"},
+            {"=","assign"},{"==","equal"},
+            {"!","not"},{"!=","notEql" },
+            {"~","bitNot"},{"~=","bitNotAssign" },
+            {"^","bitXor"},{"^=","bitXorAssign"},
+            {"&","bitAnd"},{"&=","bitAndAssign"},{"&&","and"},
+            {"|","bitOr"},{"|=","bitOrAssign"},{"||","or"},
+            {"(","("},{")",")"},{"[","["},{"]","]"},{"{","{"},{"}","}"},
+            {".","point"},{"?","question"},{":","colon"},{";","semicolon"},{",","comma"}
 };
 
 void compiler::wordsAnalyze()
@@ -65,24 +84,6 @@ void compiler::wordsAnalyze()
     return;
 
 }
-
-unordered_map<string, string> compiler::symbolMap = {
-            {"+","plus"},{"++","inc"}, {"+=","plusAssign"},
-            {"-","sub"},{"--","dec"},{"-=","decAssign"}, {"->","target"},
-            {"*","multiply"},{"*=","multiplyAssign" },
-            {"/","devide"},{"/=","devideAssign"},
-            {"%","reminder"}, {"%=","reminderAssign"},
-            {"<","lessThan"},{"<=","lessEql"},{"<<=","leftShift"},{"<<=","leftShiftEql"},
-            {">","greaterThan"},{">=","greaterEql"},{">>","rightShift"},{">>=","rightShiftEql"},
-            {"=","assign"},{"==","equal"},
-            {"!","not"},{"!=","notEql" },
-            {"~","bitNot"},{"~=","bitNotAssign" },
-            {"^","bitXor"},{"^=","bitXorAssign"},
-            {"&","bitAnd"},{"&=","bitAndAssign"},{"&&","and"},
-            {"|","bitOr"},{"|=","bitOrAssign"},{"||","or"},
-            {"(","("},{")",")"},{"[","["},{"]","]"},{"{","{"},{"}","}"},
-            {".","point"},{"?","question"},{":","colon"},{";","semicolon"},{",","comma"}
-};
 
 void compiler::initSymbolCheckTree() {
     for (unordered_map<string, string>::iterator it = symbolMap.begin(); it != symbolMap.end(); it++) {
@@ -228,28 +229,46 @@ string compiler::stringCheck()
     forChar = nowChar;
     int state = 0;
     bool Exit = false;
+    string ans = "";
     while (!Exit) {
         switch (state)
         {
         case 0:
-            if ('\"' == *forChar)state = 1;
-            else { errorInfoAppend(Error::UnfinishedString, string(nowChar, forChar - nowChar)); Exit = true; }
+            if ('\"' == *forChar) {
+                ans += *forChar;
+                state = 1;
+            }
+            else {
+                errorInfoAppend(Error::UnfinishedString, string(nowChar, forChar - nowChar)); 
+                Exit = true; 
+            }
             break;
         case 1:
-            if ('\\' == *forChar)state = 2;
-            else if ('\"' == *forChar)Exit = true;
-            else;
+            if ('\\' == *forChar) { ans += *forChar; state = 2; }
+            else if ('\"' == *forChar) { ans += *forChar; Exit = true; }
+            else if ('\n' == *forChar||!isprint(*forChar)) { 
+                Exit = true; 
+                errorInfoAppend(Error::UnfinishedString, ans);
+               if('\n'==*forChar) lineNumber++;
+            }
+            else ans += *forChar;
             break;
         case 2:
+            if (*forChar == '\n') { ans.pop_back(); lineNumber++; }
+            else if (!isprint(*forChar)) {
+                Exit = true;
+                errorInfoAppend(Error::UnfinishedString, ans);
+            }
+            else ans += *forChar;
             state = 1;
             break;
         default:
             break;
-        }
-        if (!Exit && Error::EndOfFile == incForChar()) { errorInfoAppend(Error::UnfinishedString, string(nowChar, forChar - nowChar)); break; }
+        }               
+        if (!Exit && Error::EndOfFile == incForChar()) { errorInfoAppend(Error::UnfinishedString,ans); break; }
     }
-    if (state == 1) { noticedString++; return  string(nowChar, forChar - nowChar + 1); }
-    else return "";
+    if (state == 1) { noticedString++; return  ans; }
+    else return "\"**unkown string**\"";
 }
 
 string compiler::charCheck() {
@@ -358,10 +377,12 @@ void compiler::ignoreAnnotation()
 
 string compiler::pretreatCheck()
 {
+    char* temp=forChar;
     while ('\n' != (*forChar)) {
+        temp = forChar;
         if (Error::EndOfFile == incForChar())break;
     };
     string info=string(nowChar,forChar-nowChar);
-    nowChar = forChar;
+    nowChar = forChar=temp;
     return info;
 }
