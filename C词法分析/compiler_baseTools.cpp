@@ -48,7 +48,7 @@ int compiler::incForChar()
     if (*forChar == EOF) {
         if (&inputStr[LENGTH / 2 - 1] == forChar) {
             if (bufferFlag == false) {
-                if (nowChar > &inputStr[LENGTH / 2 - 1]) { return Error::TooLongSymbol; }
+                if (nowChar > &inputStr[LENGTH / 2 - 1]) { return Error::TooLongToken; }
                 input->read(&inputStr[LENGTH / 2], LENGTH / 2 - 1);
                 bufferFlag = true;
             }
@@ -56,7 +56,7 @@ int compiler::incForChar()
         }
         else if (&inputStr[LENGTH - 1] == forChar) {
             if (bufferFlag == true) {
-                if (nowChar < &inputStr[LENGTH / 2 - 1]) { return Error::TooLongSymbol; }
+                if (nowChar < &inputStr[LENGTH / 2 - 1]) { return Error::TooLongToken; }
                 input->read(&inputStr[0], LENGTH / 2 - 1);
                 charNumber += LENGTH - 2;
                 bufferFlag = false;

@@ -35,10 +35,10 @@ void compiler::wordsAnalyze()
     inputStr[LENGTH / 2 - 1] = inputStr[LENGTH - 1] = EOF;
     nowChar = forChar = inputStr;
     bufferFlag = false;
-    string info;
+    string info="";
 
     while (*nowChar) {
-        info = "";
+        info .clear();
         if (isdigit(*nowChar)) {
             info = numberCheck();
         }
@@ -71,8 +71,10 @@ void compiler::wordsAnalyze()
         else {
             while (!isspace(*forChar)) {
                 if (Error::EndOfFile == incForChar())break;
+                info += *forChar;
             };
-            errorInfoAppend(Error::UnkownInput,"\""+ string(nowChar, forChar-nowChar) + "\"" );
+            errorInfoAppend(Error::UnkownInput, "\"" + info + "\"");
+            info = "<?word,\"" + info + "\>";           
 
         };
         if (!info.empty()) *output << info << "\t";
@@ -131,7 +133,7 @@ string compiler::numberCheck()
     string number = "";
     char* temp = forChar;
     bool Exit = false;
-
+    
     while (!Exit) {
         switch (state)
         {
@@ -176,7 +178,7 @@ string compiler::numberCheck()
             else Exit = true;
             break;
         default://forChar = temp;
-            errorInfoAppend(Error::UnkownState, "numberCheck DFA unkown state  when manage\"" + string(nowChar, forChar - nowChar) + "\"");
+            errorInfoAppend(Error::UnkownState, "numberCheck DFA unkown state  when manage\"" + number + "\"");
             Exit = true;
             break;
         }
@@ -239,7 +241,7 @@ string compiler::stringCheck()
                 state = 1;
             }
             else {
-                errorInfoAppend(Error::UnfinishedString, string(nowChar, forChar - nowChar)); 
+                errorInfoAppend(Error::UnfinishedString, ans); 
                 Exit = true; 
             }
             break;
@@ -268,7 +270,7 @@ string compiler::stringCheck()
         if (!Exit && Error::EndOfFile == incForChar()) { errorInfoAppend(Error::UnfinishedString,ans); break; }
     }
     if (state == 1) { noticedString++; return "<string,"+ ans+">"; }
-    else return "<?string,\"**unkown string**\">";
+    else return "<?string,"+ans+">";
 }
 
 string compiler::charCheck() {
@@ -319,23 +321,26 @@ string compiler::charCheck() {
             break;
         default:Exit = true; break;
         }
+        ch += *forChar;
         if (!Exit) {
             temp = forChar;
-            if (Error::EndOfFile == incForChar()) { errorInfoAppend(Error::UnfinishedChar, string(nowChar, forChar - nowChar + 1)); forChar = temp; Exit = true; }
+            if (Error::EndOfFile == incForChar()) { errorInfoAppend(Error::UnfinishedChar, ch); forChar = temp; Exit = true; }
         }
         else {
-            if (*forChar != '\'') 
+            if (*forChar != '\''){
                 forChar = temp;
+                ch.pop_back();
+            }
             if (state != 4 && state != 3) {
-                if (state == -2)errorInfoAppend(Error::UnsupportedChar, string(nowChar, forChar - nowChar + 1));
-                else errorInfoAppend(Error::UnfinishedChar, string(nowChar, forChar - nowChar + 1));
+                if (state == -2)errorInfoAppend(Error::UnsupportedChar, ch);
+                else errorInfoAppend(Error::UnfinishedChar,ch);
             }            
         }
     }
     if (state == 4 || state == 3) {
-        noticedChar++;    return "<char," + string(nowChar,forChar-nowChar+1) + ">";
+        noticedChar++;    return "<char," + ch + ">";
     }
-    else return "<?char,"+ string(nowChar, forChar - nowChar + 1) +">";
+    else return "<?char,"+ ch +">";
 }
 
 void compiler::ignoreAnnotation()

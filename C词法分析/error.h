@@ -17,10 +17,7 @@ public:
     enum Type {
         NoError = 0,
         EndOfFile = 1,
-        UndefinedSymbol = 2,
-        UndefinedNumber = 3,
-        UndefinedIdentifier = 4,
-        TooLongSymbol = 5,
+        TooLongToken = 5,
         UnkownState = 6,
         UnfinishedAnnotation = 7,
         UnfinishedToken = 8,
@@ -33,10 +30,7 @@ public:
     std::string addInfo(int lineNumber, int rowNumber, int type, std::string detail) {
         std::string ans = "Error:: error unkown : ";
         switch (type) {
-        case UndefinedSymbol:ans = "Error:: Undefined symbol : " + detail; break;
-        case UndefinedNumber:ans = "Error:: UndefinedNumber :  " + detail; break;
-        case UndefinedIdentifier:ans = "Error:: UndefinedIdentifier : " + detail; break;
-        case TooLongSymbol:ans = "Error:: TooLongSymbol : " + detail; break;
+        case TooLongToken:ans = "Error:: TooLongSymbol : " + detail; break;
         case UnkownState:ans = "Error:: DFA state undefined : " + detail; break;
         case UnfinishedAnnotation:ans = "Error:: Unfinished Annotation : " + detail; break;
         case UnfinishedToken:ans = "Error:: Unfinished Token : " + detail; break;
